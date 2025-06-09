@@ -8,20 +8,25 @@ const SchPost = () => {
   const [message, setMessage] = useState('');
   const [scheduledTime, setScheduledTime] = useState('');
   const [mediaFile, setMediaFile] = useState(null);
-  const [mediaType, setMediaType] = useState('photo'); // photo or video
+  const [mediaType, setMediaType] = useState('photo'); // 'photo' or 'video'
 
   const handleFacebookLogin = () => {
-    const appId = '24700456586221475';
+    const appId = '24700456586221475'; // ❗ Make sure this is correct
     const redirectUri = 'http://localhost:5173/schedulePost';
     const scopes = 'pages_show_list,pages_read_engagement,pages_manage_posts,pages_read_user_content';
 
-    window.location.href =
-      `https://www.facebook.com/v18.0/dialog/oauth?client_id=${appId}&redirect_uri=${redirectUri}&scope=${scopes}&response_type=token`;
+    window.location.href = `https://www.facebook.com/v18.0/dialog/oauth?client_id=${appId}&redirect_uri=${redirectUri}&scope=${scopes}&response_type=token`;
   };
 
   const fetchPages = async (userAccessToken) => {
-    const res = await axios.get(`https://graph.facebook.com/me/accounts?access_token=${userAccessToken}`);
-    setPages(res.data.data);
+    try {
+      const res = await axios.get(`https://graph.facebook.com/me/accounts?access_token=${userAccessToken}`);
+      setPages(res.data.data);
+      console.log('Fetched Pages:', res.data.data);
+    } catch (err) {
+      console.error('Error fetching pages:', err);
+      alert('Failed to fetch pages');
+    }
   };
 
   useEffect(() => {
@@ -41,10 +46,13 @@ const SchPost = () => {
     if (!scheduledTime) return alert('Select a scheduled time.');
 
     const timestamp = Math.floor(new Date(scheduledTime).getTime() / 1000);
+    const pageAccessToken = pages.find(p => p.id === selectedPage)?.access_token;
+
+    if (!pageAccessToken) return alert('Page access token missing.');
 
     const formData = new FormData();
     formData.append('pageId', selectedPage);
-    formData.append('pageAccessToken', pages.find(p => p.id === selectedPage)?.access_token);
+    formData.append('pageAccessToken', pageAccessToken);
     formData.append('message', message);
     formData.append('scheduledTime', timestamp);
     formData.append('mediaType', mediaType);
@@ -56,6 +64,7 @@ const SchPost = () => {
       });
       alert('Scheduled Post ID: ' + res.data.postId);
     } catch (err) {
+      console.error(err);
       alert('Failed to schedule post: ' + (err.response?.data?.error || err.message));
     }
   };
@@ -64,9 +73,12 @@ const SchPost = () => {
     if (!mediaFile) return alert('Please select a media file.');
     if (!selectedPage) return alert('Select a valid page.');
 
+    const pageAccessToken = pages.find(p => p.id === selectedPage)?.access_token;
+    if (!pageAccessToken) return alert('Page access token missing.');
+
     const formData = new FormData();
     formData.append('pageId', selectedPage);
-    formData.append('pageAccessToken', pages.find(p => p.id === selectedPage)?.access_token);
+    formData.append('pageAccessToken', pageAccessToken);
     formData.append('message', message);
     formData.append('mediaType', mediaType);
     formData.append('file', mediaFile);
@@ -77,7 +89,28 @@ const SchPost = () => {
       });
       alert('Post ID: ' + res.data.postId);
     } catch (err) {
+      console.error(err);
       alert('Failed to post instantly: ' + (err.response?.data?.error || err.message));
+    }
+  };
+
+  const getAllPosts = async () => {
+    if (!selectedPage) return alert('Select a valid page.');
+    const pageAccessToken = pages.find(p => p.id === selectedPage)?.access_token;
+    if (!pageAccessToken) return alert('Page access token missing.')
+    try {
+      const res = await axios.get('http://localhost:5000/posts/getallposts', {
+        params: {
+          pageId: selectedPage,
+          accessToken: pageAccessToken,
+        }
+      });
+
+      console.log('Posts:', res.data);
+      return res.data;
+    } catch (err) {
+      console.error('Error fetching posts:', err);
+      alert('Failed to fetch posts: ' + (err.response?.data?.error || err.message));
     }
   };
 
@@ -152,6 +185,12 @@ const SchPost = () => {
               className="flex-1 bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition font-semibold"
             >
               Post Now
+            </button>
+            <button
+              onClick={getAllPosts}
+              className="flex-1 bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition font-semibold"
+            >
+              Get All Posts
             </button>
           </div>
         </div>
