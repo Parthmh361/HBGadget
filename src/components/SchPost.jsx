@@ -1,0 +1,163 @@
+import React, { useState, useEffect } from 'react';
+import axios from 'axios';
+
+const SchPost = () => {
+  const [accessToken, setAccessToken] = useState('');
+  const [pages, setPages] = useState([]);
+  const [selectedPage, setSelectedPage] = useState('');
+  const [message, setMessage] = useState('');
+  const [scheduledTime, setScheduledTime] = useState('');
+  const [mediaFile, setMediaFile] = useState(null);
+  const [mediaType, setMediaType] = useState('photo'); // photo or video
+
+  const handleFacebookLogin = () => {
+    const appId = '24700456586221475';
+    const redirectUri = 'http://localhost:5173/schedulePost';
+    const scopes = 'pages_show_list,pages_read_engagement,pages_manage_posts,pages_read_user_content';
+
+    window.location.href =
+      `https://www.facebook.com/v18.0/dialog/oauth?client_id=${appId}&redirect_uri=${redirectUri}&scope=${scopes}&response_type=token`;
+  };
+
+  const fetchPages = async (userAccessToken) => {
+    const res = await axios.get(`https://graph.facebook.com/me/accounts?access_token=${userAccessToken}`);
+    setPages(res.data.data);
+  };
+
+  useEffect(() => {
+    const hash = window.location.hash;
+    if (hash) {
+      const token = new URLSearchParams(hash.substring(1)).get('access_token');
+      if (token) {
+        setAccessToken(token);
+        fetchPages(token);
+      }
+    }
+  }, []);
+
+  const handleSchedulePost = async () => {
+    if (!mediaFile) return alert('Please select a media file.');
+    if (!selectedPage) return alert('Select a valid page.');
+    if (!scheduledTime) return alert('Select a scheduled time.');
+
+    const timestamp = Math.floor(new Date(scheduledTime).getTime() / 1000);
+
+    const formData = new FormData();
+    formData.append('pageId', selectedPage);
+    formData.append('pageAccessToken', pages.find(p => p.id === selectedPage)?.access_token);
+    formData.append('message', message);
+    formData.append('scheduledTime', timestamp);
+    formData.append('mediaType', mediaType);
+    formData.append('media', mediaFile);
+
+    try {
+      const res = await axios.post('http://localhost:5000/schedulePost/timing', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      alert('Scheduled Post ID: ' + res.data.postId);
+    } catch (err) {
+      alert('Failed to schedule post: ' + (err.response?.data?.error || err.message));
+    }
+  };
+
+  const handlePostNow = async () => {
+    if (!mediaFile) return alert('Please select a media file.');
+    if (!selectedPage) return alert('Select a valid page.');
+
+    const formData = new FormData();
+    formData.append('pageId', selectedPage);
+    formData.append('pageAccessToken', pages.find(p => p.id === selectedPage)?.access_token);
+    formData.append('message', message);
+    formData.append('mediaType', mediaType);
+    formData.append('file', mediaFile);
+
+    try {
+      const res = await axios.post('http://localhost:5000/schedulePost/instantly', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      alert('Post ID: ' + res.data.postId);
+    } catch (err) {
+      alert('Failed to post instantly: ' + (err.response?.data?.error || err.message));
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
+      {!accessToken ? (
+        <button
+          onClick={handleFacebookLogin}
+          className="px-6 py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition"
+        >
+          Login with Facebook
+        </button>
+      ) : (
+        <div className="bg-white shadow-xl rounded-2xl p-8 w-full max-w-lg">
+          <h2 className="text-2xl font-bold mb-6 text-gray-800">Schedule a Facebook Post</h2>
+
+          <label className="block mb-2 text-sm font-medium text-gray-700">Select Page</label>
+          <select
+            onChange={e => setSelectedPage(e.target.value)}
+            value={selectedPage}
+            className="w-full mb-4 border border-gray-300 rounded-lg p-2"
+          >
+            <option value="">-- Choose a Page --</option>
+            {pages.map(page => (
+              <option key={page.id} value={page.id}>{page.name}</option>
+            ))}
+          </select>
+
+          <label className="block mb-2 text-sm font-medium text-gray-700">Message / Caption</label>
+          <textarea
+            value={message}
+            onChange={e => setMessage(e.target.value)}
+            className="w-full mb-4 border rounded-lg p-2 h-24"
+            placeholder="Write your post message or caption..."
+          />
+
+          <label className="block mb-2 text-sm font-medium text-gray-700">Media Type</label>
+          <select
+            value={mediaType}
+            onChange={e => setMediaType(e.target.value)}
+            className="w-full mb-4 border rounded-lg p-2"
+          >
+            <option value="photo">Photo</option>
+            <option value="video">Video</option>
+          </select>
+
+          <label className="block mb-2 text-sm font-medium text-gray-700">Upload Media</label>
+          <input
+            type="file"
+            accept={mediaType === 'photo' ? 'image/*' : 'video/*'}
+            onChange={e => setMediaFile(e.target.files[0])}
+            className="w-full mb-6"
+          />
+
+          <label className="block mb-2 text-sm font-medium text-gray-700">Schedule Time (for scheduling only)</label>
+          <input
+            type="datetime-local"
+            value={scheduledTime}
+            onChange={e => setScheduledTime(e.target.value)}
+            className="w-full mb-6 border rounded-lg p-2"
+          />
+
+          <div className="flex flex-col sm:flex-row gap-4">
+            <button
+              onClick={handleSchedulePost}
+              className="flex-1 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition font-semibold"
+            >
+              Schedule Later
+            </button>
+            <button
+              onClick={handlePostNow}
+              className="flex-1 bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition font-semibold"
+            >
+              Post Now
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default SchPost;
