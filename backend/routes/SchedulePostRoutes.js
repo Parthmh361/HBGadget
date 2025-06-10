@@ -33,7 +33,7 @@ async function uploadPhoto({ pageId, pageAccessToken, caption, buffer, filename,
 }
 
 // Helper to upload video to Facebook
-async function uploadVideo({ pageId, pageAccessToken, description, buffer, filename, scheduledTime }) {
+async function uploadVideo({ pageId, pageAccessToken, description, buffer, filename, scheduledTime },) {
   const formData = new FormData();
 
   formData.append('access_token', pageAccessToken);
