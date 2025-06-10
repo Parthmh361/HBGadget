@@ -1,10 +1,10 @@
 import { createSlice } from '@reduxjs/toolkit';
-
 const pagesSlice = createSlice({
   name: 'pages',
   initialState: {
-    pages: [],     // array of page objects
+    pages: [],
     selectedPage: null,
+    postsByPage: {}, // New: pageName => [posts]
   },
   reducers: {
     setPages: (state, action) => {
@@ -19,6 +19,14 @@ const pagesSlice = createSlice({
     clearSelectedPage: (state) => {
       state.selectedPage = null;
     },
+    setPostsByPage: (state, action) => {
+      const { pageName, posts } = action.payload;
+      console.log(`Setting posts for page: ${pageName}`, posts);
+      state.postsByPage[pageName] = posts;
+    },
+    clearPostsByPage: (state) => {
+      state.postsByPage = {};
+    },
   }
 });
 
@@ -26,7 +34,9 @@ export const {
   setPages,
   clearPages,
   setSelectedPage,
-  clearSelectedPage
+  clearSelectedPage,
+  setPostsByPage,
+  clearPostsByPage,
 } = pagesSlice.actions;
 
 export default pagesSlice.reducer;

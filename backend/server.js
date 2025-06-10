@@ -31,7 +31,8 @@ const authRoutes = require('./routes/AuthRoutes');
 const EditPostsRoutes = require('./routes/EditPostsRoutes');
 const SchedulePostRoutes = require('./routes/SchedulePostRoutes');
 const GetPostRoutes = require('./routes/getPostRoutes');
-
+const InsightRoutes = require('./routes/InsightsRoutes');
+app.use('/insights', InsightRoutes);
 app.use('/auth', authRoutes);
 app.use('/schedulePost', SchedulePostRoutes);
 app.use('/posts', GetPostRoutes);
