@@ -8,10 +8,10 @@ const SchPost = () => {
   const [message, setMessage] = useState('');
   const [scheduledTime, setScheduledTime] = useState('');
   const [mediaFile, setMediaFile] = useState(null);
-  const [mediaType, setMediaType] = useState('photo'); // 'photo' or 'video'
+  const [mediaType, setMediaType] = useState('photo'); 
 
   const handleFacebookLogin = () => {
-    const appId = '24700456586221475'; // ❗ Make sure this is correct
+    const appId = '24700456586221475'; 
     const redirectUri = 'http://localhost:5173/schedulePost';
     const scopes = 'pages_show_list,pages_read_engagement,pages_manage_posts,pages_read_user_content';
 
