@@ -24,7 +24,9 @@ const SchPost = () => {
       const res = await axios.get('http://localhost:5000/auth/facebook/pages', {
         withCredentials: true,
       });
+      console.log('Fetched pages:', res.data.pages);
       dispatch(setPages(res.data.pages)); // ✅ use Redux
+      
     } catch (err) {
       console.error('Error fetching pages:', err);
      
