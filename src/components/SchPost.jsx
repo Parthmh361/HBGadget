@@ -27,7 +27,7 @@ const SchPost = () => {
       dispatch(setPages(res.data.pages)); // ✅ use Redux
     } catch (err) {
       console.error('Error fetching pages:', err);
-      alert('Failed to fetch pages');
+     
     }
   };
 
@@ -85,6 +85,7 @@ const SchPost = () => {
   };
 
   const getAllPosts = async () => {
+ 
     if (!selectedPage) return alert('Select a valid page.');
     try {
       const res = await axios.get('http://localhost:5000/posts/getallposts', {
@@ -94,6 +95,9 @@ const SchPost = () => {
         },
         withCredentials: true,
       });
+      const accessToken = pages.find(p => p.id === selectedPage)?.access_token || '';
+      console.log(accessToken);
+        console.log('Fetching posts for page:', selectedPage);
       console.log('Posts:', res.data);
     } catch (err) {
       console.error('Error fetching posts:', err);

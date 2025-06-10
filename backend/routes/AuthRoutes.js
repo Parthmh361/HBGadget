@@ -8,7 +8,7 @@ const REDIRECT_URI = 'http://localhost:5000/auth/facebook/callback';
 
 // 1. Redirect user to Facebook login
 router.get('/facebook', (req, res) => {
-  const authURL = `https://www.facebook.com/v18.0/dialog/oauth?client_id=${CLIENT_ID}&redirect_uri=${REDIRECT_URI}&scope=pages_show_list,pages_read_engagement,pages_manage_posts,pages_read_user_content,pages_manage_metadata&response_type=code`;
+  const authURL = `https://www.facebook.com/v18.0/dialog/oauth?client_id=${CLIENT_ID}&redirect_uri=${REDIRECT_URI}&scope=read_insights,pages_show_list,pages_read_engagement,pages_manage_posts,pages_read_user_content,pages_manage_metadata,pages_show_list&response_type=code`;
   res.redirect(authURL);
 });
 
@@ -28,7 +28,7 @@ router.get('/facebook/callback', async (req, res) => {
 
     const userAccessToken = tokenRes.data.access_token;
     req.session.userAccessToken = userAccessToken;
-
+    console.log('User access token:', userAccessToken);
     res.redirect('http://localhost:5173/schedulePost'); // frontend route
   } catch (error) {
     console.error('Error exchanging code for token:', error.response?.data || error.message);

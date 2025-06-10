@@ -33,8 +33,8 @@ router.get('/getallposts', async (req, res) => {
         ].join(',')
       }
     });
-
-    res.json(data);
+    console.log("Fetched posts data:", data);
+    res.send(data);
   } catch (error) {
     console.error('Facebook API error:', error?.response?.data || error.message);
     return res.status(500).json({
