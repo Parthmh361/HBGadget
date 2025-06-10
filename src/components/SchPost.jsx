@@ -1,28 +1,30 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import { useDispatch, useSelector } from 'react-redux';
+import { setPages } from '../store/pagesSlice';
+import LogoutButton from './LogoutButton';
+import PageSelector from './PageSelector';
 
 const SchPost = () => {
-  const [accessToken, setAccessToken] = useState('');
-  const [pages, setPages] = useState([]);
+  const dispatch = useDispatch();
+  const pages = useSelector((state) => state.pages.pages);
+
   const [selectedPage, setSelectedPage] = useState('');
   const [message, setMessage] = useState('');
   const [scheduledTime, setScheduledTime] = useState('');
   const [mediaFile, setMediaFile] = useState(null);
-  const [mediaType, setMediaType] = useState('photo'); 
+  const [mediaType, setMediaType] = useState('photo');
 
   const handleFacebookLogin = () => {
-    const appId = '24700456586221475'; 
-    const redirectUri = 'http://localhost:5173/schedulePost';
-    const scopes = 'pages_show_list,pages_read_engagement,pages_manage_posts,pages_read_user_content';
-
-    window.location.href = `https://www.facebook.com/v18.0/dialog/oauth?client_id=${appId}&redirect_uri=${redirectUri}&scope=${scopes}&response_type=token`;
+    window.location.href = 'http://localhost:5000/auth/facebook';
   };
 
-  const fetchPages = async (userAccessToken) => {
+  const fetchPages = async () => {
     try {
-      const res = await axios.get(`https://graph.facebook.com/me/accounts?access_token=${userAccessToken}`);
-      setPages(res.data.data);
-      console.log('Fetched Pages:', res.data.data);
+      const res = await axios.get('http://localhost:5000/auth/facebook/pages', {
+        withCredentials: true,
+      });
+      dispatch(setPages(res.data.pages)); // ✅ use Redux
     } catch (err) {
       console.error('Error fetching pages:', err);
       alert('Failed to fetch pages');
@@ -30,14 +32,7 @@ const SchPost = () => {
   };
 
   useEffect(() => {
-    const hash = window.location.hash;
-    if (hash) {
-      const token = new URLSearchParams(hash.substring(1)).get('access_token');
-      if (token) {
-        setAccessToken(token);
-        fetchPages(token);
-      }
-    }
+    fetchPages();
   }, []);
 
   const handleSchedulePost = async () => {
@@ -46,21 +41,18 @@ const SchPost = () => {
     if (!scheduledTime) return alert('Select a scheduled time.');
 
     const timestamp = Math.floor(new Date(scheduledTime).getTime() / 1000);
-    const pageAccessToken = pages.find(p => p.id === selectedPage)?.access_token;
-
-    if (!pageAccessToken) return alert('Page access token missing.');
-
     const formData = new FormData();
     formData.append('pageId', selectedPage);
-    formData.append('pageAccessToken', pageAccessToken);
+    formData.append('pageAccessToken', pages.find(p => p.id === selectedPage)?.access_token || '');
     formData.append('message', message);
     formData.append('scheduledTime', timestamp);
     formData.append('mediaType', mediaType);
-    formData.append('media', mediaFile);
+    formData.append('file', mediaFile);
 
     try {
       const res = await axios.post('http://localhost:5000/schedulePost/timing', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
+        withCredentials: true,
       });
       alert('Scheduled Post ID: ' + res.data.postId);
     } catch (err) {
@@ -73,12 +65,9 @@ const SchPost = () => {
     if (!mediaFile) return alert('Please select a media file.');
     if (!selectedPage) return alert('Select a valid page.');
 
-    const pageAccessToken = pages.find(p => p.id === selectedPage)?.access_token;
-    if (!pageAccessToken) return alert('Page access token missing.');
-
     const formData = new FormData();
     formData.append('pageId', selectedPage);
-    formData.append('pageAccessToken', pageAccessToken);
+    formData.append('pageAccessToken', pages.find(p => p.id === selectedPage)?.access_token || '');
     formData.append('message', message);
     formData.append('mediaType', mediaType);
     formData.append('file', mediaFile);
@@ -86,6 +75,7 @@ const SchPost = () => {
     try {
       const res = await axios.post('http://localhost:5000/schedulePost/instantly', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
+        withCredentials: true,
       });
       alert('Post ID: ' + res.data.postId);
     } catch (err) {
@@ -96,18 +86,15 @@ const SchPost = () => {
 
   const getAllPosts = async () => {
     if (!selectedPage) return alert('Select a valid page.');
-    const pageAccessToken = pages.find(p => p.id === selectedPage)?.access_token;
-    if (!pageAccessToken) return alert('Page access token missing.')
     try {
       const res = await axios.get('http://localhost:5000/posts/getallposts', {
         params: {
           pageId: selectedPage,
-          accessToken: pageAccessToken,
-        }
+          accessToken: pages.find(p => p.id === selectedPage)?.access_token || ''
+        },
+        withCredentials: true,
       });
-
       console.log('Posts:', res.data);
-      return res.data;
     } catch (err) {
       console.error('Error fetching posts:', err);
       alert('Failed to fetch posts: ' + (err.response?.data?.error || err.message));
@@ -116,7 +103,7 @@ const SchPost = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
-      {!accessToken ? (
+      {pages.length === 0 ? (
         <button
           onClick={handleFacebookLogin}
           className="px-6 py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition"
@@ -165,7 +152,7 @@ const SchPost = () => {
             className="w-full mb-6"
           />
 
-          <label className="block mb-2 text-sm font-medium text-gray-700">Schedule Time (for scheduling only)</label>
+          <label className="block mb-2 text-sm font-medium text-gray-700">Schedule Time</label>
           <input
             type="datetime-local"
             value={scheduledTime}
@@ -192,6 +179,8 @@ const SchPost = () => {
             >
               Get All Posts
             </button>
+            <LogoutButton />
+            <PageSelector/>
           </div>
         </div>
       )}
