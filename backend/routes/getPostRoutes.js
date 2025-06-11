@@ -1,27 +1,34 @@
-// routes/facebook.js
 const express = require('express');
 const axios = require('axios');
 const router = express.Router();
+const Page = require('../models/Page');
 
 /**
- * GET /facebook/posts
+ * GET /getallposts
  * Query params:
  *   - pageId
- *   - accessToken
  */
 router.get('/getallposts', async (req, res) => {
-  const { pageId, accessToken } = req.query;
-    console.log("Received request to fetch posts for pageId:", pageId);
-  console.log("Access Token:", accessToken);
-  if (!pageId || !accessToken) {
-    return res.status(400).json({ error: 'Missing pageId or accessToken' });
+  const { pageId } = req.query;
+  if (!pageId) {
+    return res.status(400).json({ error: 'Missing pageId' });
   }
 
   try {
-    
+    // Check DB first
+    const page = await Page.findOne({ pageId });
+    if (page && page.posts && page.posts.length > 0) {
+      return res.json({ posts: page.posts });
+    }
+
+    // If not in DB, fetch from Facebook
+    if (!page || !page.access_token) {
+      return res.status(404).json({ error: 'Page or access token not found in DB' });
+    }
+
     const { data } = await axios.get(`https://graph.facebook.com/${pageId}/posts`, {
       params: {
-        access_token: accessToken,
+        access_token: page.access_token,
         fields: [
           'id',
           'message',
@@ -33,8 +40,20 @@ router.get('/getallposts', async (req, res) => {
         ].join(',')
       }
     });
-    console.log("Fetched posts data:", data);
-    res.send(data);
+
+    // Save posts to DB
+    page.posts = data.data.map(post => ({
+      postId: post.id,
+      message: post.message,
+      created_time: post.created_time,
+      full_picture: post.full_picture,
+      attachments: post.attachments,
+      likes: post.likes,
+      comments: post.comments,
+    }));
+    await page.save();
+
+    res.json({ posts: page.posts });
   } catch (error) {
     console.error('Facebook API error:', error?.response?.data || error.message);
     return res.status(500).json({
@@ -43,31 +62,61 @@ router.get('/getallposts', async (req, res) => {
   }
 });
 
+/**
+ * GET /getallpostsfilter
+ * Query params:
+ *   - pageId
+ *   - sortBy (likes, comments, date)
+ *   - order (asc, desc)
+ */
 router.get('/getallpostsfilter', async (req, res) => {
-  const { pageId, accessToken, sortBy, order = 'desc' } = req.query;
+  const { pageId, sortBy, order = 'desc' } = req.query;
 
-  if (!pageId || !accessToken) {
-    return res.status(400).json({ error: 'Missing pageId or accessToken' });
+  if (!pageId) {
+    return res.status(400).json({ error: 'Missing pageId' });
   }
 
   try {
-    // Get posts from Facebook
-    const fbRes = await axios.get(`https://graph.facebook.com/${pageId}/posts`, {
-      params: {
-        access_token: accessToken,
-        fields: [
-          'id',
-          'message',
-          'created_time',
-          'full_picture',
-          'attachments{media_type,media,url}',
-          'likes.summary(true)',
-          'comments.summary(true){message,from,created_time}'
-        ].join(',')
+    // Check DB first
+    const page = await Page.findOne({ pageId });
+    let posts = [];
+    if (page && page.posts && page.posts.length > 0) {
+      posts = [...page.posts];
+    } else {
+      // If not in DB, fetch from Facebook
+      if (!page || !page.access_token) {
+        return res.status(404).json({ error: 'Page or access token not found in DB' });
       }
-    });
 
-    let posts = fbRes.data.data;
+      const fbRes = await axios.get(`https://graph.facebook.com/${pageId}/posts`, {
+        params: {
+          access_token: page.access_token,
+          fields: [
+            'id',
+            'message',
+            'created_time',
+            'full_picture',
+            'attachments{media_type,media,url}',
+            'likes.summary(true)',
+            'comments.summary(true){message,from,created_time}'
+          ].join(',')
+        }
+      });
+
+      posts = fbRes.data.data.map(post => ({
+        postId: post.id,
+        message: post.message,
+        created_time: post.created_time,
+        full_picture: post.full_picture,
+        attachments: post.attachments,
+        likes: post.likes,
+        comments: post.comments,
+      }));
+
+      // Save posts to DB
+      page.posts = posts;
+      await page.save();
+    }
 
     // Sort if needed
     if (sortBy === 'likes') {
@@ -95,4 +144,5 @@ router.get('/getallpostsfilter', async (req, res) => {
     });
   }
 });
+
 module.exports = router;

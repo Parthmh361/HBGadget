@@ -23,26 +23,22 @@ export default function Insights() {
     }
   };
 
-  const fetchPagePosts = async (pageId, accessToken, pageName) => {
+  const fetchPagePosts = async (pageId, pageName) => {
     try {
       const res = await axios.get('http://localhost:5000/posts/getallposts', {
-        params: { pageId, accessToken },
+        params: { pageId },
         withCredentials: true,
       });
-      console.log(`Fetched posts for page: ${pageName}`, res.data.data);
-      dispatch(setPostsByPage({ pageName, posts: res.data.data }));
+      dispatch(setPostsByPage({ pageName, posts: res.data.posts }));
     } catch (err) {
       console.error('Error fetching posts:', err);
     }
   };
 
-  const fetchPostInsights = async (postId, accessToken) => {
+  const fetchPostInsights = async (postId) => {
     try {
       const res = await axios.get('http://localhost:5000/insights/post', {
-        params: {
-          postId,
-          access_token: accessToken,
-        },
+        params: { postId },
         withCredentials: true,
       });
       setInsights(res.data);
@@ -53,9 +49,9 @@ export default function Insights() {
 
   const handlePageSelect = (e) => {
     const selectedId = e.target.value;
-    const page = pages.find((p) => p.id === selectedId);
+    const page = pages.find((p) => p.id === selectedId || p.pageId === selectedId);
     setSelectedPage(page);
-    fetchPagePosts(page.id, page.access_token, page.name);
+    fetchPagePosts(page.id || page.pageId, page.name);
     setSelectedPostId('');
     setInsights(null);
   };
@@ -63,7 +59,7 @@ export default function Insights() {
   const handlePostSelect = (e) => {
     const postId = e.target.value;
     setSelectedPostId(postId);
-    fetchPostInsights(postId, selectedPage.access_token);
+    fetchPostInsights(postId);
   };
 
   useEffect(() => {
@@ -78,7 +74,7 @@ export default function Insights() {
       <select onChange={handlePageSelect} defaultValue="">
         <option value="" disabled>Select a Page</option>
         {pages.map((page) => (
-          <option key={page.id} value={page.id}>
+          <option key={page.id || page.pageId} value={page.id || page.pageId}>
             {page.name}
           </option>
         ))}
@@ -91,7 +87,7 @@ export default function Insights() {
           <select onChange={handlePostSelect} value={selectedPostId}>
             <option value="" disabled>Select a Post</option>
             {postsByPage[selectedPage.name].map((post) => (
-              <option key={post.id} value={post.id}>
+              <option key={post.id || post.postId} value={post.id || post.postId}>
                 {post.message ? post.message.slice(0, 50) : '[No Text Post]'}
               </option>
             ))}

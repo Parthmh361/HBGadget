@@ -4,6 +4,7 @@ const pagesSlice = createSlice({
   initialState: {
     pages: [],
     selectedPage: null,
+    user:{"_id":"6848796dbf37871f362aeef1"},
     postsByPage: {}, // New: pageName => [posts]
   },
   reducers: {

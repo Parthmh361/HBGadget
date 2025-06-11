@@ -3,6 +3,7 @@ const router = express.Router();
 const multer = require('multer');
 const FormData = require('form-data');
 const axios = require('axios');
+const Page = require('../models/Page');
 require('dotenv').config();
 
 // Use multer memory storage so files are in `req.file.buffer`
@@ -33,7 +34,7 @@ async function uploadPhoto({ pageId, pageAccessToken, caption, buffer, filename,
 }
 
 // Helper to upload video to Facebook
-async function uploadVideo({ pageId, pageAccessToken, description, buffer, filename, scheduledTime },) {
+async function uploadVideo({ pageId, pageAccessToken, description, buffer, filename, scheduledTime }) {
   const formData = new FormData();
 
   formData.append('access_token', pageAccessToken);
@@ -61,7 +62,6 @@ async function uploadVideo({ pageId, pageAccessToken, description, buffer, filen
  * Schedule photo or video post with uploaded file
  * Expects multipart/form-data with fields:
  * - pageId (string)
- * - pageAccessToken (string)
  * - message or caption (string)
  * - scheduledTime (Unix timestamp in seconds)
  * - mediaType ('photo' or 'video')
@@ -71,15 +71,20 @@ router.post('/timing', upload.single('file'), async (req, res) => {
   try {
     const {
       pageId,
-      pageAccessToken,
       caption,
       message,
       scheduledTime,
       mediaType,
     } = req.body;
 
-    if (!pageId || !pageAccessToken || !req.file) {
+    if (!pageId || !req.file) {
       return res.status(400).json({ error: 'Missing required fields or file' });
+    }
+
+    // Get page from DB
+    const page = await Page.findOne({ pageId });
+    if (!page || !page.access_token) {
+      return res.status(404).json({ error: 'Page or access token not found in DB' });
     }
 
     const unixScheduledTime = parseInt(scheduledTime);
@@ -92,7 +97,7 @@ router.post('/timing', upload.single('file'), async (req, res) => {
     if (mediaType === 'video') {
       responseData = await uploadVideo({
         pageId,
-        pageAccessToken,
+        pageAccessToken: page.access_token,
         description: caption || message,
         buffer: req.file.buffer,
         filename: req.file.originalname,
@@ -102,13 +107,22 @@ router.post('/timing', upload.single('file'), async (req, res) => {
       // Default to photo
       responseData = await uploadPhoto({
         pageId,
-        pageAccessToken,
+        pageAccessToken: page.access_token,
         caption: caption || message,
         buffer: req.file.buffer,
         filename: req.file.originalname,
         scheduledTime: unixScheduledTime,
       });
     }
+
+    // Store post info in DB
+    page.posts = page.posts || [];
+    page.posts.push({
+      postId: responseData.id || responseData.post_id,
+      message: caption || message,
+      created_time: new Date().toISOString(),
+    });
+    await page.save();
 
     res.status(200).json({ success: true, postId: responseData.id || responseData.post_id || null });
   } catch (error) {
@@ -122,7 +136,6 @@ router.post('/timing', upload.single('file'), async (req, res) => {
  * Post photo or video immediately with uploaded file
  * Expects multipart/form-data with fields:
  * - pageId (string)
- * - pageAccessToken (string)
  * - message or caption (string)
  * - mediaType ('photo' or 'video')
  * - file (photo/video file)
@@ -131,14 +144,19 @@ router.post('/instantly', upload.single('file'), async (req, res) => {
   try {
     const {
       pageId,
-      pageAccessToken,
       caption,
       message,
       mediaType,
     } = req.body;
 
-    if (!pageId || !pageAccessToken || !req.file) {
+    if (!pageId || !req.file) {
       return res.status(400).json({ error: 'Missing required fields or file' });
+    }
+
+    // Get page from DB
+    const page = await Page.findOne({ pageId });
+    if (!page || !page.access_token) {
+      return res.status(404).json({ error: 'Page or access token not found in DB' });
     }
 
     let responseData;
@@ -146,7 +164,7 @@ router.post('/instantly', upload.single('file'), async (req, res) => {
     if (mediaType === 'video') {
       responseData = await uploadVideo({
         pageId,
-        pageAccessToken,
+        pageAccessToken: page.access_token,
         description: caption || message,
         buffer: req.file.buffer,
         filename: req.file.originalname,
@@ -155,12 +173,21 @@ router.post('/instantly', upload.single('file'), async (req, res) => {
       // Default to photo
       responseData = await uploadPhoto({
         pageId,
-        pageAccessToken,
+        pageAccessToken: page.access_token,
         caption: caption || message,
         buffer: req.file.buffer,
         filename: req.file.originalname,
       });
     }
+
+    // Store post info in DB
+    page.posts = page.posts || [];
+    page.posts.push({
+      postId: responseData.id || responseData.post_id,
+      message: caption || message,
+      created_time: new Date().toISOString(),
+    });
+    await page.save();
 
     res.status(200).json({ success: true, postId: responseData.id || responseData.post_id || null });
   } catch (error) {
@@ -168,6 +195,5 @@ router.post('/instantly', upload.single('file'), async (req, res) => {
     res.status(500).json({ error: 'Failed to post instantly' });
   }
 });
-
 
 module.exports = router;
