@@ -8,6 +8,7 @@ import PageSelector from './PageSelector';
 const SchPost = () => {
   const dispatch = useDispatch();
   const pages = useSelector((state) => state.pages.pages);
+  const user = useSelector((state) => state.pages.user);
 
   const [selectedPage, setSelectedPage] = useState('');
   const [message, setMessage] = useState('');
@@ -15,26 +16,31 @@ const SchPost = () => {
   const [mediaFile, setMediaFile] = useState(null);
   const [mediaType, setMediaType] = useState('photo');
 
+  // Redirect to Facebook login with user_id as query param
   const handleFacebookLogin = () => {
-    window.location.href = 'http://localhost:5000/auth/facebook';
+    if (!user || !user._id) {
+      alert('Please login first.');
+      return;
+    }
+    window.location.href = `http://localhost:5000/auth/facebook?user_id=${user._id}`;
   };
 
+  // Fetch pages after Facebook login
   const fetchPages = async () => {
     try {
       const res = await axios.get('http://localhost:5000/auth/facebook/pages', {
         withCredentials: true,
       });
       console.log('Fetched pages:', res.data.pages);
-      dispatch(setPages(res.data.pages)); // ✅ use Redux
-      
+      dispatch(setPages(res.data.pages));
     } catch (err) {
       console.error('Error fetching pages:', err);
-     
     }
   };
 
   useEffect(() => {
     fetchPages();
+    
   }, []);
 
   const handleSchedulePost = async () => {
@@ -45,7 +51,6 @@ const SchPost = () => {
     const timestamp = Math.floor(new Date(scheduledTime).getTime() / 1000);
     const formData = new FormData();
     formData.append('pageId', selectedPage);
-    formData.append('pageAccessToken', pages.find(p => p.id === selectedPage)?.access_token || '');
     formData.append('message', message);
     formData.append('scheduledTime', timestamp);
     formData.append('mediaType', mediaType);
@@ -69,7 +74,6 @@ const SchPost = () => {
 
     const formData = new FormData();
     formData.append('pageId', selectedPage);
-    formData.append('pageAccessToken', pages.find(p => p.id === selectedPage)?.access_token || '');
     formData.append('message', message);
     formData.append('mediaType', mediaType);
     formData.append('file', mediaFile);
@@ -87,19 +91,13 @@ const SchPost = () => {
   };
 
   const getAllPosts = async () => {
- 
     if (!selectedPage) return alert('Select a valid page.');
     try {
       const res = await axios.get('http://localhost:5000/posts/getallposts', {
-        params: {
-          pageId: selectedPage,
-          accessToken: pages.find(p => p.id === selectedPage)?.access_token || ''
-        },
+        params: { pageId: selectedPage },
         withCredentials: true,
       });
-      const accessToken = pages.find(p => p.id === selectedPage)?.access_token || '';
-      console.log(accessToken);
-        console.log('Fetching posts for page:', selectedPage);
+      console.log('Fetching posts for page:', selectedPage);
       console.log('Posts:', res.data);
     } catch (err) {
       console.error('Error fetching posts:', err);

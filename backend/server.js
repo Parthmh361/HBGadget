@@ -2,7 +2,11 @@ const express = require('express');
 const axios = require('axios');
 const cors = require('cors');
 require('dotenv').config();
+const mongoose = require('mongoose');
+const userAuthRoutes = require('./routes/Auth');
+const authenticateJWT = require('./middlewares/auth');
 const session = require('express-session');
+const requireFacebookAuth = require('./middlewares/userAuthMiddleware');
 const app = express();
 
 // ✅ Only this correct CORS setup should be used
@@ -26,17 +30,18 @@ app.use(session({
   },
 }));
 
-// ✅ Routes
+mongoose.connect(process.env.MONGO_URI);
+app.use('/userauth', userAuthRoutes);
 const authRoutes = require('./routes/AuthRoutes');
 const EditPostsRoutes = require('./routes/EditPostsRoutes');
 const SchedulePostRoutes = require('./routes/SchedulePostRoutes');
 const GetPostRoutes = require('./routes/getPostRoutes');
 const InsightRoutes = require('./routes/InsightsRoutes');
-app.use('/insights', InsightRoutes);
+app.use('/insights',requireFacebookAuth, InsightRoutes);
 app.use('/auth', authRoutes);
-app.use('/schedulePost', SchedulePostRoutes);
-app.use('/posts', GetPostRoutes);
-app.use('/editPost', EditPostsRoutes);
+app.use('/schedulePost',requireFacebookAuth, SchedulePostRoutes);
+app.use('/posts',requireFacebookAuth, GetPostRoutes);
+app.use('/editPost',requireFacebookAuth, EditPostsRoutes);
 
 // ✅ Start server
 const PORT = process.env.PORT || 5000;

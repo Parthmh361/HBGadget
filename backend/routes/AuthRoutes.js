@@ -1,26 +1,44 @@
 const express = require('express');
 const axios = require('axios');
+const User = require('../models/User'); 
 const router = express.Router();
-
-const CLIENT_ID = '24700456586221475';
-const CLIENT_SECRET = '9cce24a5e7609bde33921d2b0978986d'; // Replace with your real app secret
-const REDIRECT_URI = 'http://localhost:5000/auth/facebook/callback';
+const Page = require('../models/Page');
+// Helper to get Facebook App credentials for a user by user_id (passed as query param)
+async function getFacebookCredentials(user_id) {
+  const user = await User.findById(user_id);
+  if (!user || !user.facebookAppId || !user.facebookAppSecret) {
+    throw new Error('Facebook App credentials not found for user');
+  }
+  return {
+    clientId: user.facebookAppId,
+    clientSecret: user.facebookAppSecret,
+  };
+}
 
 // 1. Redirect user to Facebook login
-router.get('/facebook', (req, res) => {
-  const authURL = `https://www.facebook.com/v18.0/dialog/oauth?client_id=${CLIENT_ID}&redirect_uri=${REDIRECT_URI}&scope=read_insights,pages_show_list,pages_read_engagement,pages_manage_posts,pages_read_user_content,pages_manage_metadata,pages_show_list,&response_type=code`;
-  res.redirect(authURL);
+router.get('/facebook', async (req, res) => {
+  const { user_id } = req.query; // Pass user_id as query param
+  try {
+    const { clientId } = await getFacebookCredentials(user_id);
+    const REDIRECT_URI = `http://localhost:5000/auth/facebook/callback?user_id=${encodeURIComponent(user_id)}`;
+    const authURL = `https://www.facebook.com/v18.0/dialog/oauth?client_id=${clientId}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&scope=read_insights,pages_show_list,pages_read_engagement,pages_manage_posts,pages_read_user_content,pages_manage_metadata,pages_show_list,&response_type=code`;
+    res.redirect(authURL);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
 });
 
 // 2. Facebook callback with code
 router.get('/facebook/callback', async (req, res) => {
-  const { code } = req.query;
-
+  const { code, user_id } = req.query;
   try {
+    const { clientId, clientSecret } = await getFacebookCredentials(user_id);
+    const REDIRECT_URI = `http://localhost:5000/auth/facebook/callback?user_id=${encodeURIComponent(user_id)}`;
+
     const tokenRes = await axios.get('https://graph.facebook.com/v18.0/oauth/access_token', {
       params: {
-        client_id: CLIENT_ID,
-        client_secret: CLIENT_SECRET,
+        client_id: clientId,
+        client_secret: clientSecret,
         redirect_uri: REDIRECT_URI,
         code,
       }
@@ -28,7 +46,6 @@ router.get('/facebook/callback', async (req, res) => {
 
     const userAccessToken = tokenRes.data.access_token;
     req.session.userAccessToken = userAccessToken;
-    console.log('User access token:', userAccessToken);
     res.redirect('http://localhost:5173/schedulePost'); // frontend route
   } catch (error) {
     console.error('Error exchanging code for token:', error.response?.data || error.message);
@@ -43,7 +60,29 @@ router.get('/facebook/pages', async (req, res) => {
 
   try {
     const pageRes = await axios.get(`https://graph.facebook.com/me/accounts?access_token=${token}`);
-    res.json({ pages: pageRes.data.data });
+    const pages = pageRes.data.data;
+
+    // Save or update each page in the DB
+    for (const page of pages) {
+      await Page.findOneAndUpdate(
+        { pageId: page.id },
+        {
+          pageId: page.id,
+          name: page.name,
+          category: page.category,
+          category_list: page.category_list,
+          access_token: page.access_token,
+          tasks: page.tasks,
+        },
+        { upsert: true, new: true }
+      );
+    }
+
+    // Remove access_token before sending to user
+    const sanitizedPages = pages.map(({ access_token, ...rest }) => rest);
+
+    res.json({ pages: sanitizedPages });
+    console.log('Fetched pages:', sanitizedPages);
   } catch (err) {
     console.error('Error fetching pages:', err.response?.data || err.message);
     res.status(500).json({ error: 'Failed to fetch pages' });
