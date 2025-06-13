@@ -29,7 +29,16 @@ app.use(session({
     httpOnly: true,
   },
 }));
-
+app.use(session({
+  secret: 'your-secret',
+  resave: false,
+  saveUninitialized: true,
+  cookie: {
+    secure: false, // true if using HTTPS
+    httpOnly: true,
+    sameSite: 'lax'
+  }
+}));
 mongoose.connect(process.env.MONGO_URI);
 app.use('/userauth', userAuthRoutes);
 const authRoutes = require('./routes/AuthRoutes');
@@ -42,7 +51,7 @@ app.use('/auth', authRoutes);
 app.use('/schedulePost',requireFacebookAuth, SchedulePostRoutes);
 app.use('/posts',requireFacebookAuth, GetPostRoutes);
 app.use('/editPost',requireFacebookAuth, EditPostsRoutes);
-
+app.use('/api/youtube', require('./routes/youtube'));
 // ✅ Start server
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {

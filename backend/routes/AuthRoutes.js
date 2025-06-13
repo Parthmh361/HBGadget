@@ -46,7 +46,7 @@ router.get('/facebook/callback', async (req, res) => {
 
     const userAccessToken = tokenRes.data.access_token;
     req.session.userAccessToken = userAccessToken;
-    res.redirect('http://localhost:5173/schedulePost'); // frontend route
+    res.redirect('http://localhost:5173/home'); // frontend route
   } catch (error) {
     console.error('Error exchanging code for token:', error.response?.data || error.message);
     res.status(500).json({ error: 'Token exchange failed' });
@@ -82,7 +82,6 @@ router.get('/facebook/pages', async (req, res) => {
     const sanitizedPages = pages.map(({ access_token, ...rest }) => rest);
 
     res.json({ pages: sanitizedPages });
-    console.log('Fetched pages:', sanitizedPages);
   } catch (err) {
     console.error('Error fetching pages:', err.response?.data || err.message);
     res.status(500).json({ error: 'Failed to fetch pages' });

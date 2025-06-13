@@ -10,6 +10,7 @@ export default function Insights() {
   const [selectedPage, setSelectedPage] = useState(null);
   const [selectedPostId, setSelectedPostId] = useState('');
   const [insights, setInsights] = useState(null);
+  const [insightType, setInsightType] = useState(''); // 'page' or 'post'
 
   const fetchPages = async () => {
     try {
@@ -42,8 +43,25 @@ export default function Insights() {
         withCredentials: true,
       });
       setInsights(res.data);
+      setInsightType('post');
     } catch (err) {
       console.error('Error fetching post insights:', err.response?.data || err.message);
+    }
+  };
+
+  const fetchPageInsights = async (pageId) => {
+    try {
+      const res = await axios.get('http://localhost:5000/insights/page', {
+        params: {
+          pageId,
+          metrics: 'page_impressions,page_engaged_users', // Add more metrics as needed
+        },
+        withCredentials: true,
+      });
+      setInsights(res.data);
+      setInsightType('page');
+    } catch (err) {
+      console.error('Error fetching page insights:', err.response?.data || err.message);
     }
   };
 
@@ -54,6 +72,7 @@ export default function Insights() {
     fetchPagePosts(page.id || page.pageId, page.name);
     setSelectedPostId('');
     setInsights(null);
+    setInsightType('');
   };
 
   const handlePostSelect = (e) => {
@@ -80,6 +99,24 @@ export default function Insights() {
         ))}
       </select>
 
+      {/* Fetch Page Insights Button */}
+      {selectedPage && (
+        <button
+          style={{
+            margin: '1rem 0',
+            padding: '0.5rem 1rem',
+            background: '#2563eb',
+            color: '#fff',
+            border: 'none',
+            borderRadius: '5px',
+            cursor: 'pointer'
+          }}
+          onClick={() => fetchPageInsights(selectedPage.id || selectedPage.pageId)}
+        >
+          Fetch Page Insights
+        </button>
+      )}
+
       {/* Post Dropdown */}
       {selectedPage && postsByPage[selectedPage.name] && (
         <>
@@ -98,7 +135,7 @@ export default function Insights() {
       {/* Insights */}
       {insights && (
         <div style={{ marginTop: '1rem' }}>
-          <h3>Post Insights</h3>
+          <h3>{insightType === 'page' ? 'Page Insights' : 'Post Insights'}</h3>
           <pre>{JSON.stringify(insights, null, 2)}</pre>
         </div>
       )}
