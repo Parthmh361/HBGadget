@@ -38,7 +38,7 @@ router.get('/facebook/callback', async (req, res) => {
 
   try {
     const { clientId, clientSecret } = await getFacebookCredentials(user_id);
-    const REDIRECT_URI = https://socialsuit-backend-h9md.onrender.com/auth/facebook/callback;
+    const REDIRECT_URI = "https://socialsuit-backend-h9md.onrender.com/auth/facebook/callback";
 
     const tokenRes = await axios.get('https://graph.facebook.com/v18.0/oauth/access_token', {
       params: {
@@ -65,7 +65,7 @@ router.get('/facebook/pages', async (req, res) => {
   if (!token) return res.status(401).json({ error: 'User not authenticated' });
 
   try {
-    const pageRes = await axios.get(https://graph.facebook.com/me/accounts?access_token=${token});
+    const pageRes = await axios.get(`https://graph.facebook.com/me/accounts?access_token=${token}`);
     const pages = pageRes.data.data;
 
     for (const page of pages) {
