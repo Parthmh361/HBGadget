@@ -62,6 +62,7 @@ router.get('/facebook/callback', async (req, res) => {
 // 3. Fetch Facebook pages
 router.get('/facebook/pages', async (req, res) => {
   const token = req.session.userAccessToken;
+  console.log("Token:",token);
   if (!token) return res.status(401).json({ error: 'User not authenticated' });
 
   try {
