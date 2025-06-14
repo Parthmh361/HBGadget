@@ -51,6 +51,7 @@ router.get('/facebook/callback', async (req, res) => {
 
     const userAccessToken = tokenRes.data.access_token;
     req.session.userAccessToken = userAccessToken;
+    console.log("Session set with token:", req.session.userAccessToken); 
 
     res.redirect('http://localhost:5173/home'); // your frontend
   } catch (error) {
