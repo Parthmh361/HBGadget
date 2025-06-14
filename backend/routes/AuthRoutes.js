@@ -34,7 +34,7 @@ router.get('/facebook', async (req, res) => {
 // 2. Facebook callback with code
 router.get('/facebook/callback', async (req, res) => {
   const { code, state } = req.query;
-  const user_id = state; // extract user_id from state
+  const user_id = state;
 
   try {
     const { clientId, clientSecret } = await getFacebookCredentials(user_id);
@@ -51,9 +51,17 @@ router.get('/facebook/callback', async (req, res) => {
 
     const userAccessToken = tokenRes.data.access_token;
     req.session.userAccessToken = userAccessToken;
-    console.log("Session set with token:", req.session.userAccessToken); 
 
-    res.redirect('http://localhost:5173/home'); // your frontend
+    console.log("✅ Session set with token:", req.session.userAccessToken);
+
+    // Ensure session is saved before redirect
+    req.session.save((err) => {
+      if (err) {
+        console.error('Session save error:', err);
+        return res.status(500).send('Session save failed');
+      }
+      res.redirect('http://localhost:5173/home');
+    });
   } catch (error) {
     console.error('Error exchanging code for token:', error.response?.data || error.message);
     res.status(500).json({ error: 'Token exchange failed' });
@@ -63,8 +71,9 @@ router.get('/facebook/callback', async (req, res) => {
 // 3. Fetch Facebook pages
 router.get('/facebook/pages', async (req, res) => {
   const token = req.session.userAccessToken;
-  console.log("Token:",token);
-  console.log("Full session:", req.session); 
+  console.log("🔍 Token:", token);
+  console.log("📦 Full session:", req.session);
+
   if (!token) return res.status(401).json({ error: 'User not authenticated' });
 
   try {
@@ -103,6 +112,14 @@ router.get('/logout', (req, res) => {
     }
     res.clearCookie('connect.sid');
     res.status(200).send('Logged out');
+  });
+});
+
+// 5. Debug session route (optional, for development)
+router.get('/debug/session', (req, res) => {
+  res.json({
+    sessionID: req.sessionID,
+    session: req.session
   });
 });
 
