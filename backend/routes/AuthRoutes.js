@@ -7,6 +7,7 @@ const router = express.Router();
 // Helper to get Facebook App credentials
 async function getFacebookCredentials(user_id) {
   const user = await User.findById(user_id);
+  console.log(user);
   if (!user || !user.facebookAppId || !user.facebookAppSecret) {
     throw new Error('Facebook App credentials not found for user');
   }
