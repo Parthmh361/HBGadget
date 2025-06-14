@@ -21,7 +21,7 @@ router.get('/facebook', async (req, res) => {
   const { user_id } = req.query;
   try {
     const { clientId } = await getFacebookCredentials(user_id);
-    const REDIRECT_URI = "https://socialsuit-backend-h9md.onrender.com/auth/facebook/callback";
+    const REDIRECT_URI = "https://socialsuit-backend-h9md.onrender.com/auth/facebook/callback?user_id=${encodeURIComponent(user_id)}";
 
     const authURL = `https://www.facebook.com/v18.0/dialog/oauth?client_id=${clientId}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&scope=read_insights,pages_show_list,pages_read_engagement,pages_manage_posts,pages_read_user_content,pages_manage_metadata,pages_show_list&response_type=code&state=${user_id}`;
 
@@ -38,7 +38,7 @@ router.get('/facebook/callback', async (req, res) => {
 
   try {
     const { clientId, clientSecret } = await getFacebookCredentials(user_id);
-    const REDIRECT_URI = "https://socialsuit-backend-h9md.onrender.com/auth/facebook/callback";
+    const REDIRECT_URI = "https://socialsuit-backend-h9md.onrender.com/auth/facebook/callback?user_id=${encodeURIComponent(user_id)}";
 
     const tokenRes = await axios.get('https://graph.facebook.com/v18.0/oauth/access_token', {
       params: {
