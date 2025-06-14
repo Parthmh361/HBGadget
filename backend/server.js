@@ -1,60 +1,55 @@
-const express = require('express');
-const axios = require('axios');
-const cors = require('cors');
 require('dotenv').config();
+const express = require('express');
 const mongoose = require('mongoose');
-const userAuthRoutes = require('./routes/Auth');
-const authenticateJWT = require('./middlewares/auth');
 const session = require('express-session');
-const requireFacebookAuth = require('./middlewares/userAuthMiddleware');
+const cors = require('cors');
+const MongoStore = require('connect-mongo');
+
 const app = express();
 
-// ✅ Only this correct CORS setup should be used
+// CORS
 app.use(cors({
   origin: 'http://localhost:5173',
   credentials: true
 }));
 
-// Body parsers
+// Body parsing
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// ✅ Session setup
+// Sessions
 app.use(session({
-  secret: 'secure-facebook-login',
+  secret: process.env.SESSION_SECRET || 'secure-facebook-login',
   resave: false,
-  saveUninitialized: true,
+  saveUninitialized: false,
+  store: MongoStore.create({ mongoUrl: process.env.MONGO_URI }),
   cookie: {
     secure: false,
-    httpOnly: true,
-  },
-}));
-app.use(session({
-  secret: 'your-secret',
-  resave: false,
-  saveUninitialized: true,
-  cookie: {
-    secure: false, // true if using HTTPS
     httpOnly: true,
     sameSite: 'lax'
   }
 }));
-mongoose.connect(process.env.MONGO_URI);
-app.use('/userauth', userAuthRoutes);
-const authRoutes = require('./routes/AuthRoutes');
-const EditPostsRoutes = require('./routes/EditPostsRoutes');
-const SchedulePostRoutes = require('./routes/SchedulePostRoutes');
-const GetPostRoutes = require('./routes/getPostRoutes');
-const InsightRoutes = require('./routes/InsightsRoutes');
-app.use('/insights',requireFacebookAuth, InsightRoutes);
-app.use('/auth', authRoutes);
-app.use('/schedulePost',requireFacebookAuth, SchedulePostRoutes);
-app.use('/posts',requireFacebookAuth, GetPostRoutes);
-app.use('/editPost',requireFacebookAuth, EditPostsRoutes);
+
+// MongoDB Connection
+mongoose.connect(process.env.MONGO_URI, {
+  useNewUrlParser: true,
+  useUnifiedTopology: true,
+})
+.then(() => console.log('✅ MongoDB connected successfully'))
+.catch(err => console.error('❌ MongoDB connection error:', err));
+
+// Routes
+app.use('/userauth', require('./routes/Auth'));
+app.use('/auth', require('./routes/AuthRoutes'));
+app.use('/schedulePost', require('./middlewares/userAuthMiddleware'), require('./routes/SchedulePostRoutes'));
+app.use('/posts', require('./middlewares/userAuthMiddleware'), require('./routes/getPostRoutes'));
+app.use('/editPost', require('./middlewares/userAuthMiddleware'), require('./routes/EditPostsRoutes'));
+app.use('/insights', require('./middlewares/userAuthMiddleware'), require('./routes/InsightsRoutes'));
 app.use('/api/youtube', require('./routes/youtube'));
-// ✅ Start server
+
+// Start Server
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
-
-  console.log(`Server running on http://localhost:${PORT}`);
+  console.log(`✅ Server running on http://localhost:${PORT}`);
+  console.log('     ==> Your service is live 🎉');
 });
