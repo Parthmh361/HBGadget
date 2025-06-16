@@ -8,10 +8,26 @@ const MongoStore = require('connect-mongo');
 const app = express();
 
 // CORS
+const allowedOrigins = [
+  'http://localhost:5173',
+  'https://hbg-vercel-yhjj.vercel.app'
+];
+
 app.use(cors({
-  origin: ['http://localhost:5173', 'https://hbg-vercel-yhjj.vercel.app/'],
-  credentials: true
+  origin: function (origin, callback) {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
 }));
+
+// Preflight requests
+app.options('*', cors());
 
 // Body parsing
 app.use(express.json());
