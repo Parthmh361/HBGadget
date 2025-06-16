@@ -65,7 +65,7 @@ router.get('/facebook/callback', async (req, res) => {
         console.error('Session save error:', err);
         return res.status(500).send('Session save failed');
       }
-      res.redirect('http://localhost:5173/home');
+      res.redirect('https://hbg-vercel-yhjj.vercel.app/home');
     });
   } catch (error) {
     console.error('Error exchanging code for token:', error.response?.data || error.message);
