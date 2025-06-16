@@ -32,7 +32,11 @@ app.use(session({
 
 // MongoDB Connection
 console.log('Trying to connect to MongoDB:', process.env.MONGO_URI);
-mongoose.connect(process.env.MONGO_URI)
+mongoose.connect(process.env.MONGO_URI, {
+  serverSelectionTimeoutMS: 60000, // 60 seconds
+  useNewUrlParser: true,
+  useUnifiedTopology: true,
+})
 .then(() => console.log('✅ MongoDB connected successfully'))
 .catch(err => console.error('❌ MongoDB connection error:', err));
 
