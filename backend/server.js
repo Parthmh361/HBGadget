@@ -38,11 +38,16 @@ app.use(session({
   secret: process.env.SESSION_SECRET || 'secure-facebook-login',
   resave: false,
   saveUninitialized: false,
-  store: MongoStore.create({ mongoUrl: process.env.MONGO_URI }),
+  store: MongoStore.create({ 
+    mongoUrl: process.env.MONGO_URI,
+    touchAfter: 24 * 3600, // lazy session update
+    ttl: 14 * 24 * 60 * 60 // = 14 days. Default
+  }),
   cookie: {
-    secure: true,
+    secure: process.env.NODE_ENV === 'production', // Only secure in production
     httpOnly: true,
-    sameSite: 'none'
+    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+    maxAge: 24 * 60 * 60 * 1000 // 24 hours
   }
 }));
 
