@@ -39,10 +39,10 @@ router.get('/facebook/callback', async (req, res) => {
   const { code, state } = req.query;
   const user_id = state;
 
+  console.log('🔄 Callback received:', { code: !!code, state });
+
   try {
     const { clientId, clientSecret } = await getFacebookCredentials(user_id);
-
-    // Must match what you used during the auth redirect
     const REDIRECT_URI = `https://socialsuit-backend-h9md.onrender.com/auth/facebook/callback`;
 
     const tokenRes = await axios.get('https://graph.facebook.com/v18.0/oauth/access_token', {
@@ -55,20 +55,36 @@ router.get('/facebook/callback', async (req, res) => {
     });
 
     const userAccessToken = tokenRes.data.access_token;
+    console.log('🎫 Token received:', userAccessToken.substring(0, 20) + '...');
+
+    // Store in session
     req.session.userAccessToken = userAccessToken;
+    req.session.user_id = user_id;
+    
+    console.log('💾 Before save - Session ID:', req.sessionID);
+    console.log('💾 Before save - Session data:', req.session);
 
-    console.log("✅ Session set with token:", req.session.userAccessToken);
-
-    // Ensure session is saved before redirect
-    req.session.save((err) => {
-      if (err) {
-        console.error('Session save error:', err);
-        return res.status(500).send('Session save failed');
-      }
-      res.redirect('https://hbg-vercel-yhjj.vercel.app/home');
+    // Force session save and wait for it
+    await new Promise((resolve, reject) => {
+      req.session.save((err) => {
+        if (err) {
+          console.error('❌ Session save error:', err);
+          reject(err);
+        } else {
+          console.log('✅ Session saved successfully');
+          console.log('✅ Session after save:', req.session);
+          resolve();
+        }
+      });
     });
+
+    // Add a small delay to ensure session is persisted
+    setTimeout(() => {
+      res.redirect('https://hbg-vercel-yhjj.vercel.app/home');
+    }, 100);
+
   } catch (error) {
-    console.error('Error exchanging code for token:', error.response?.data || error.message);
+    console.error('❌ Error in callback:', error.response?.data || error.message);
     res.status(500).json({ error: 'Token exchange failed' });
   }
 });
