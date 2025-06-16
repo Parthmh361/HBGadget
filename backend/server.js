@@ -24,17 +24,15 @@ app.use(session({
   saveUninitialized: false,
   store: MongoStore.create({ mongoUrl: process.env.MONGO_URI }),
   cookie: {
-    secure: false,
+    secure: true,
     httpOnly: true,
     sameSite: 'none'
   }
 }));
 
 // MongoDB Connection
-mongoose.connect(process.env.MONGO_URI, {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
-})
+console.log('Trying to connect to MongoDB:', process.env.MONGO_URI);
+mongoose.connect(process.env.MONGO_URI)
 .then(() => console.log('✅ MongoDB connected successfully'))
 .catch(err => console.error('❌ MongoDB connection error:', err));
 
