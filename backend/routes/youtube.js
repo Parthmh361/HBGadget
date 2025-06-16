@@ -113,7 +113,7 @@ router.get('/oauth2callback', async (req, res) => {
     const { tokens } = await oauth2Client.getToken(code);
     req.session.accessToken = tokens.access_token; // Store in session
     // Redirect to your dashboard or home page
-    res.redirect('http://localhost:5173/youtube');
+    res.redirect('https://hbg-vercel-yhjj.vercel.app/youtube');
   } catch (err) {
     res.status(400).json({ error: 'Failed to get tokens', details: err });
   }
